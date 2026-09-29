@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.csv
+*.npy
+.ipynb_checkpoints/
+*.pdf
+temp_juknis.txt
