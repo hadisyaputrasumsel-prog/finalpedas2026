@@ -26,12 +26,18 @@ st.markdown("""
 
 # --- LOAD DATA (CACHED FOR PERFORMANCE) ---
 @st.cache_data(ttl=3600)
-def load_data(file_buffer, nrows=1_000_000):
+def load_data(file_buffer, nrows=1_000_000, is_parquet=False):
     # Only load required columns for memory efficiency
     kolom = ['ts_iso', 'ip_ver', 'proto', 'qr', 'qname', 'qtype_name', 'rcode']
     
     try:
-        df = pd.read_csv(file_buffer, usecols=kolom, nrows=nrows)
+        if is_parquet:
+            df = pd.read_parquet(file_buffer, columns=kolom)
+            if len(df) > nrows:
+                df = df.head(nrows)
+        else:
+            df = pd.read_csv(file_buffer, usecols=kolom, nrows=nrows)
+            
         # Preprocessing
         df['ts_iso'] = pd.to_datetime(df['ts_iso'], errors='coerce')
         df['qname'] = df['qname'].fillna('').astype(str).str.lower().replace('nan', '')
@@ -42,7 +48,7 @@ def load_data(file_buffer, nrows=1_000_000):
         
         return df
     except Exception as e:
-        st.error(f"Error loading data: {e}. Pastikan file CSV yang diupload valid dan memiliki kolom yang sesuai.")
+        st.error(f"Error loading data: {e}. Pastikan file valid dan memiliki kolom yang sesuai.")
         return pd.DataFrame()
 
 # --- SIDEBAR & FILTERING ---
@@ -59,10 +65,16 @@ st.sidebar.markdown("---")
 st.sidebar.info("💡 **Tips Business Analytics:** Analisis kegagalan resolusi (NXDOMAIN) yang berlebihan bisa menjadi indikasi potensi botnet atau aktivitas DGA (Domain Generation Algorithm).")
 
 # Retrieve data
+parquet_dir = "dns_parquet"
 data_path = "sample-dns-30min.csv"
 data = pd.DataFrame()
 
-if uploaded_file is not None:
+if os.path.exists(parquet_dir) and os.path.isdir(parquet_dir) and len(os.listdir(parquet_dir)) > 0:
+    st.sidebar.success(f"✅ Data Tersedia ({parquet_dir} terkompresi)")
+    with st.spinner('Memuat Data DNS dari Parquet di server...'):
+        data = load_data(parquet_dir, nrows=nrows_option * 1000, is_parquet=True)
+
+elif uploaded_file is not None:
     with st.spinner("Menyimpan file ke server secara otomatis untuk akses nanti..."):
         with open(data_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
@@ -77,7 +89,7 @@ elif os.path.exists(data_path):
         data = load_data(data_path, nrows=nrows_option * 1000)
 
 else:
-    st.info("👋 Selamat Datang! Belum ada data di server. Silakan unggah (upload) file CSV DNS pada Sidebar menu di sebelah kiri untuk melihat Dashboard. Setelah pengunjung pertama mengunggah data, pengunjung berikutnya dapat langsung melihat hasilnya tanpa perlu upload ulang.")
+    st.info("👋 Selamat Datang! Belum ada data di server. Karena ukuran data sangat besar (2.4 GB), silakan upload data yang sudah dikompres menjadi Parquet, atau upload CSV Anda. Jika jaringan tidak stabil, aplikasi ini sudah mendukung format Dataset Parquet yang sangat ringan dari folder 'dns_parquet'.")
     st.stop()
 
 if data.empty:
