@@ -5,7 +5,7 @@ services:
     build: .
     container_name: pedas2026-dashboard
     ports:
-      - "8501:8501"
+      - "8501"
     restart: unless-stopped
     volumes:
       # Mount current dir to /app to override and pick up changes instantly
