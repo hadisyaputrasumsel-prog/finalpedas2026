@@ -13,4 +13,4 @@ COPY . /app/
 EXPOSE 8501
 
 # Command to run the dashboard
-CMD ["streamlit", "run", "dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "dashboard.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.maxUploadSize=3000"]

@@ -25,13 +25,12 @@ st.markdown("""
 
 # --- LOAD DATA (CACHED FOR PERFORMANCE) ---
 @st.cache_data(ttl=3600)
-def load_data(nrows=1_000_000):
+def load_data(file_buffer, nrows=1_000_000):
     # Only load required columns for memory efficiency
     kolom = ['ts_iso', 'ip_ver', 'proto', 'qr', 'qname', 'qtype_name', 'rcode']
-    file_path = "sample-dns-30min.csv"
     
     try:
-        df = pd.read_csv(file_path, usecols=kolom, nrows=nrows)
+        df = pd.read_csv(file_buffer, usecols=kolom, nrows=nrows)
         # Preprocessing
         df['ts_iso'] = pd.to_datetime(df['ts_iso'], errors='coerce')
         df['qname'] = df['qname'].fillna('').astype(str).str.lower().replace('nan', '')
@@ -42,13 +41,15 @@ def load_data(nrows=1_000_000):
         
         return df
     except Exception as e:
-        st.error(f"Error loading data: {e}. Please ensure '{file_path}' exists in the directory.")
+        st.error(f"Error loading data: {e}. Pastikan file CSV yang diupload valid dan memiliki kolom yang sesuai.")
         return pd.DataFrame()
 
 # --- SIDEBAR & FILTERING ---
 st.sidebar.image("https://img.icons8.com/color/150/000000/dns.png", width=100)
 st.sidebar.title("Filter Data")
 st.sidebar.markdown("Atur parameter untuk mengeksplorasi data trafik DNS.")
+
+uploaded_file = st.sidebar.file_uploader("Upload File DNS (.csv)", type=["csv"])
 
 nrows_option = st.sidebar.select_slider("Jumlah Data Ditampilkan (Baris x 1000)", options=[100, 500, 1000, 2000], value=500)
 st.sidebar.caption("Semakin besar data, semakin lama proses pemuatan.")
@@ -57,10 +58,14 @@ st.sidebar.markdown("---")
 st.sidebar.info("💡 **Tips Business Analytics:** Analisis kegagalan resolusi (NXDOMAIN) yang berlebihan bisa menjadi indikasi potensi botnet atau aktivitas DGA (Domain Generation Algorithm).")
 
 # Retrieve data
-with st.spinner('Memuat Data DNS dari sampel...'):
-    data = load_data(nrows=nrows_option * 1000)
-
-if data.empty:
+if uploaded_file is not None:
+    with st.spinner('Memuat Data DNS dari sampel...'):
+        data = load_data(uploaded_file, nrows=nrows_option * 1000)
+    
+    if data.empty:
+        st.stop()
+else:
+    st.info("👋 Selamat Datang! Silakan unggah (upload) file CSV DNS pada Sidebar menu di sebelah kiri untuk melihat Dashboard.")
     st.stop()
 
 # --- MAIN DASHBOARD HEADER ---
