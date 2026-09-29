@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -58,14 +59,29 @@ st.sidebar.markdown("---")
 st.sidebar.info("💡 **Tips Business Analytics:** Analisis kegagalan resolusi (NXDOMAIN) yang berlebihan bisa menjadi indikasi potensi botnet atau aktivitas DGA (Domain Generation Algorithm).")
 
 # Retrieve data
+data_path = "sample-dns-30min.csv"
+data = pd.DataFrame()
+
 if uploaded_file is not None:
-    with st.spinner('Memuat Data DNS dari sampel...'):
-        data = load_data(uploaded_file, nrows=nrows_option * 1000)
+    with st.spinner("Menyimpan file ke server secara otomatis untuk akses nanti..."):
+        with open(data_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+    st.sidebar.success("✅ File berhasil disimpan di server!")
     
-    if data.empty:
-        st.stop()
+    with st.spinner('Memuat Data DNS dari file yang baru diupload...'):
+        data = load_data(data_path, nrows=nrows_option * 1000)
+
+elif os.path.exists(data_path):
+    st.sidebar.success(f"✅ Data Tersedia ({data_path})")
+    with st.spinner('Memuat Data DNS dari server...'):
+        data = load_data(data_path, nrows=nrows_option * 1000)
+
 else:
-    st.info("👋 Selamat Datang! Silakan unggah (upload) file CSV DNS pada Sidebar menu di sebelah kiri untuk melihat Dashboard.")
+    st.info("👋 Selamat Datang! Belum ada data di server. Silakan unggah (upload) file CSV DNS pada Sidebar menu di sebelah kiri untuk melihat Dashboard. Setelah pengunjung pertama mengunggah data, pengunjung berikutnya dapat langsung melihat hasilnya tanpa perlu upload ulang.")
+    st.stop()
+
+if data.empty:
+    st.error("Data kosong atau gagal dimuat.")
     st.stop()
 
 # --- MAIN DASHBOARD HEADER ---
